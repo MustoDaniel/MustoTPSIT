@@ -1,0 +1,4 @@
+AB123CD, Opel, Corsa
+CR827AA, Lancia, Y
+GS969XL , Fiat , Punto
+EL622PI , Audi , A5
