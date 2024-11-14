@@ -6,7 +6,7 @@ public class Main {
         System.out.println("\nInizio crawling\n");
         startTime = System.nanoTime();
 
-        w.crawl("https://www.itisrossi.edu.it/");
+        w.crawl("https://www.wikipedia.com/");
 
         endTime = System.nanoTime();
         System.out.println("\nFine crawling\n");

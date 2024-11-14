@@ -41,8 +41,6 @@ public class WebCrawler {
 
     public void crawlWrapper(String url, int level){
 
-        gathered.get(level).add(url);
-
         try{
             Connection con = Jsoup.connect(url);
             Document doc = con.get();
