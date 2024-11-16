@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="graalvm.polyglot" type="repository">
+    <properties maven-id="org.graalvm.polyglot:polyglot:24.1.1" />
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/graalvm/polyglot/polyglot/24.1.1/polyglot-24.1.1.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/graalvm/sdk/collections/24.1.1/collections-24.1.1.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/graalvm/sdk/nativeimage/24.1.1/nativeimage-24.1.1.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/graalvm/sdk/word/24.1.1/word-24.1.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
