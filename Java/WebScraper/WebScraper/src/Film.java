@@ -1,18 +1,20 @@
 public class Film {
-    public String id;
+    public String link;
     public String nome;
     public int annoUscita;
-    public String regista;
+    public String durata;
+    public String visibilita;
 
-    public Film(String id, String nome, int annoUscita, String regista) {
-        this.id = id;
+    public Film(String id, String nome, int annoUscita, String durata, String visibilita) {
+        this.link = id;
         this.nome = nome;
         this.annoUscita = annoUscita;
-        this.regista = regista;
+        this.durata = durata;
+        this.visibilita = visibilita;
     }
 
     @Override
     public String toString(){
-        return "id: " + id + "; " +  "nome: " + nome + "; " + "annoUscita: " + annoUscita + "; " + "regista: " + regista;
+        return "link: " + link + "; " +  "nome: " + nome + "; " + "annoUscita: " + annoUscita + "; " + "durata: " + durata + "; " + "visibilita: " + visibilita;
     }
 }

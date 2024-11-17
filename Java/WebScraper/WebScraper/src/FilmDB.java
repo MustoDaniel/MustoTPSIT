@@ -16,10 +16,11 @@ public class FilmDB {
             statement.execute("create database if not exists " + DB_name);
             statement.execute("use " + DB_name);
             String createTable = "create table if not exists film("
-                    + "id varchar(64) primary key not null,"
-                    + "nome varchar(32) not null,"
-                    + "annoUscita int(4) not null,"
-                    + "regista varchar(16) not null"
+                    + "link varchar(128) primary key not null,"
+                    + "nome varchar(128) not null,"
+                    + "annoUscita int(4),"
+                    + "durata varchar(8),"
+                    + "visibilita varchar(8)"
                     + ")";
             statement.execute(createTable);
 
@@ -32,7 +33,7 @@ public class FilmDB {
     }
 
     public void insert(Film f){
-        String query = "Insert into film values(" + f.id + ",' " + f.nome + "','" + f.annoUscita + "','" + f.regista + "');" ;
+        String query = "Insert into film values('" + f.link + "','" + f.nome + "','" + f.annoUscita + "','" + f.durata + "','" + f.visibilita + "');" ;
 
         try {
             statement = connection.createStatement();
@@ -42,7 +43,7 @@ public class FilmDB {
             return;
         }
 
-        System.out.println("\nPokemon inserito con successo!");
+        System.out.println("\nFilm inserito con successo!");
     }
 
     public void stampa(){
@@ -59,7 +60,7 @@ public class FilmDB {
             }
             int i = 1;
             while(resultSet.next()){
-                Film f = new Film(resultSet.getString("id"), resultSet.getString("nome"), resultSet.getInt("annoUscita"), resultSet.getString("regista"));
+                Film f = new Film(resultSet.getString("link"), resultSet.getString("nome"), resultSet.getInt("annoUscita"), resultSet.getString("durata"), resultSet.getString("visibilita"));
                 result += "\n" + f;
             }
 

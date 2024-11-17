@@ -8,6 +8,7 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="jsoup" level="project" />
-    <orderEntry type="library" name="seleniumhq.selenium.java" level="project" />
+    <orderEntry type="library" name="auto-service-annotations-1.1.1-sources" level="project" />
+    <orderEntry type="library" name="mysql.connector.j" level="project" />
   </component>
 </module>
