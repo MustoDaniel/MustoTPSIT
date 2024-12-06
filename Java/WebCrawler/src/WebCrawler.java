@@ -40,7 +40,7 @@ public class WebCrawler {
     }
 
     public void crawlWrapper(String url, int level){
-
+    
         try{
             Connection con = Jsoup.connect(url);
             Document doc = con.get();
