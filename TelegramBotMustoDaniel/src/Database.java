@@ -3,6 +3,9 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.glassfish.grizzly.http.util.TimeStamp;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Database {
     private static HikariDataSource dataSource;    //utilizzo di HikariCP per la gestione delle connessioni al database da parte dei thread
@@ -47,7 +50,8 @@ public class Database {
                         "id int primary key not null auto_increment," +
                         "nome varchar(128) not null," +
                         "tipo varchar(64)," +
-                        "link varchar(128) unique not null," +
+                        "linkRicetta varchar(128) unique not null," +
+                        "linkImmagine varchar(128) unique," +
                         "rating float" +
                         ")";
                 statement.execute(createTable);
@@ -75,7 +79,7 @@ public class Database {
     }
 
     //Restituisce una connesione dal pool
-    private static Connection getConnection() throws SQLException {
+    private static synchronized Connection getConnection() throws SQLException {
         return dataSource.getConnection();
     }
 
@@ -99,15 +103,16 @@ public class Database {
     }
 
     //Inserisce la ricetta e restituisce l'id generato
-    public static int insertRicetta(String nome, String tipo, String link, Float rating) {
-        String query = "INSERT INTO ricetta(nome, tipo, link, rating) VALUES (?, ?, ?, ?)";
+    public static int insertRicetta(String nome, String tipo, String linkRicetta, String linkImmagine, Float rating) {
+        String query = "INSERT INTO ricetta(nome, tipo, linkRicetta, linkImmagine, rating) VALUES (?, ?, ?, ?, ?)";
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
 
             statement.setString(1, nome.replace("'", "''").trim().toLowerCase());
             statement.setString(2, tipo.replace("'", "''").trim().toLowerCase());
-            statement.setString(3, link);
-            statement.setFloat(4, rating);
+            statement.setString(3, linkRicetta);
+            statement.setString(4, linkImmagine);
+            statement.setFloat(5, rating);
             statement.execute();
 
             ResultSet rs = statement.getGeneratedKeys();
@@ -115,7 +120,7 @@ public class Database {
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
-            //System.out.println(e.getMessage());
+            System.out.println(e.getMessage());
         }
         return -1;
     }
@@ -180,8 +185,8 @@ public class Database {
         }
     }
 
-    public static ResultSet getRicette(String[] ingredienti){
-        StringBuffer query = new StringBuffer("select r.nome from ricetta r " +
+    public static Map<String, String> getRicette(String[] ingredienti){
+        StringBuffer query = new StringBuffer("select r.nome, r.linkImmagine from ricetta r " +
                 "join ricetta_ingrediente ri on r.id = ri.idRicetta " +
                 "join ingrediente i on ri.idIngrediente = i.id " +
                 "where i.nome in (");
@@ -193,7 +198,14 @@ public class Database {
         try(Connection connection = getConnection()){
             Statement statement = connection.createStatement();
             ResultSet rs = statement.executeQuery(query.toString());
-            return rs;
+
+            HashMap<String, String> result = new HashMap<>();
+
+            while (rs.next())
+                result.put(rs.getString("nome"), rs.getString("linkImmagine"));
+
+            return result;
+
         }catch (SQLException e){
             System.out.println(e.getMessage());
             return null;

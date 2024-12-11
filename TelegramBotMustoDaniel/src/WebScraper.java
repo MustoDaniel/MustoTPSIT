@@ -2,6 +2,7 @@ import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.util.concurrent.Executors;
@@ -43,10 +44,15 @@ public class WebScraper {
                 Connection con = Jsoup.connect(page);
                 Document doc = con.get();
 
-                for (Element element : doc.select("h2.gz-title"))
+                Elements linkImmagini = doc.select("div.gz-card-image").select("a[href]");
+                Elements linkRicette = doc.select("h2.gz-title");
+
+                for (int i = 0; i < linkRicette.size(); i++) {
+                    int finalI = i;
                     threadPool.execute(() -> {
-                        scrapeInfoRicetta(element.select("a[href]").attr("href"));  //passaggio del link trovato alla funzione scrapeInfoRicetta per ottenere informazioni specifiche sulla ricetta
+                        scrapeInfoRicetta(linkRicette.get(finalI).select("a[href]").attr("href"), linkImmagini.get(finalI).attr("href"));  //passaggio del link trovato alla funzione scrapeInfoRicetta per ottenere informazioni specifiche sulla ricetta
                     });
+                }
 
                 if (currentPage < maxPage)
                     scrapeRicetteWrapper(page, currentPage+1, maxPage);
@@ -58,7 +64,7 @@ public class WebScraper {
     }
 
     //funzione per ottenere informazioni specifiche sulla ricetta, dato il link della ricetta su GialloZafferano
-    private void scrapeInfoRicetta(String url){
+    private void scrapeInfoRicetta(String url, String linkImmagine){
         try{
             Connection con = Jsoup.connect(url);
             Document doc = con.get();
@@ -72,7 +78,7 @@ public class WebScraper {
                     .attr("data-content-rate")
                     .replace(',', '.').trim());
 
-            int idRicetta = db.insertRicetta(nome, tipo, url, rating);  //inserimento della ricetta nel database; viene restituito l'id che è stato assegnato automaticamente alla ricetta da parte del database (auto_increment)
+            int idRicetta = db.insertRicetta(nome, tipo, url, linkImmagine, rating);  //inserimento della ricetta nel database; viene restituito l'id che è stato assegnato automaticamente alla ricetta da parte del database (auto_increment)
 
             for(Element element : doc.select("dd.gz-ingredient")) { //iterazione sugli ingredienti della ricetta
                 String ingrediente = element.select("a").text();

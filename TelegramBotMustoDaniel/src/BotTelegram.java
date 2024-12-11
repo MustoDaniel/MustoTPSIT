@@ -1,16 +1,21 @@
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import javax.xml.crypto.Data;
+import java.io.File;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class BotTelegram extends TelegramLongPollingBot {
     public String getBotUsername() {
@@ -22,15 +27,14 @@ public class BotTelegram extends TelegramLongPollingBot {
     }
 
     public void onUpdateReceived(Update update) {
-        String msg = update.getMessage().getText();
+        String msg = update.getMessage().getText().trim();
         String chatId = update.getMessage().getChatId().toString();
         Timestamp last_active = new Timestamp(System.currentTimeMillis());
 
         Database.insertUtente(Long.parseLong(chatId), last_active);
 
-        String[] arguments = msg.split(",");
-        String command = arguments[0].split(" ")[0];
-        arguments[0] = arguments[0].split(" ")[1];
+        String command = msg.split(" ")[0];
+        String[] arguments = msg.replace(command, "").split(",");
 
         System.out.println(command);
         for(String s : arguments)
@@ -57,9 +61,14 @@ public class BotTelegram extends TelegramLongPollingBot {
                 ricetta(arguments, chatId);
             break;
             default:
+                String errorMessage = "il comando non esiste\n\n" +
+                        "comandi disponibili:\n\n" +
+                        "1) /ricetta ingrediente1, ingrediente2, ecc.. : trova delle ricette che contengono gli ingredienti forniti";
+
                 SendMessage errore = new SendMessage();
                 errore.setChatId(chatId);
-                errore.setText("Il comando non esiste");
+                errore.setText(errorMessage);
+
                 try {
                     execute(errore);
                 } catch (TelegramApiException e) {
@@ -71,18 +80,30 @@ public class BotTelegram extends TelegramLongPollingBot {
 
     private void ricetta(String[] ingredienti, long chatId) {
         try {
-            ResultSet rs = Database.getRicette(ingredienti);
-            String ricetteTrovate = "";
+            Map<String, String> ricetteTrovate = Database.getRicette(ingredienti);
 
-            while(rs.next())
-                ricetteTrovate += rs.getString(0) + "\n";
+            if(ricetteTrovate.isEmpty()) {
+                SendMessage message = new SendMessage();
+                message.setChatId(String.valueOf(chatId));
+                message.setText("Nessuna ricetta trovata");
+                execute(message);
+            }
+            else{
+                SendPhoto photo = new SendPhoto();
+                SendMessage message = new SendMessage();
 
-            SendMessage message = new SendMessage();
-            message.setChatId(String.valueOf(chatId));
-            message.setText(ricetteTrovate);
+                for(Map.Entry<String, String> entry : ricetteTrovate.entrySet()) {
+                    photo.setChatId(String.valueOf(chatId));
+                    photo.setPhoto(new InputFile(entry.getValue()));
 
-            execute(message);
-        } catch (TelegramApiException | SQLException e) {
+                    message.setChatId(String.valueOf(chatId));
+                    message.setText(entry.getKey());
+
+                    execute(message);
+                    execute(photo);
+                }
+            }
+        } catch (TelegramApiException e) {
             System.out.println(e.getMessage());
         }
     }
