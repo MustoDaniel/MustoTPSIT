@@ -1,10 +1,11 @@
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.glassfish.grizzly.http.util.TimeStamp;
 
 import java.sql.*;
 
 public class Database {
-    private HikariDataSource dataSource;    //utilizzo di HikariCP per la gestione delle connessioni al database da parte dei thread
+    private static HikariDataSource dataSource;    //utilizzo di HikariCP per la gestione delle connessioni al database da parte dei thread
 
     private static final String URL = "jdbc:mysql://localhost:3306";
     private static final String DB_NAME = "BotRicetteDB";
@@ -60,6 +61,13 @@ public class Database {
                         "foreign key (idRicetta) references ricetta(id) on delete cascade on update cascade" +
                         ")";
                 statement.execute(createTable);
+
+                // Creazione tabella utente
+                createTable = "create table if not exists utente(" +
+                        "id BIGINT primary key not null," +
+                        "last_active datetime"+
+                        ")";
+                statement.execute(createTable);
             }
         } catch (SQLException e) {
             //System.out.println("\n" + e.getMessage());
@@ -67,12 +75,12 @@ public class Database {
     }
 
     //Restituisce una connesione dal pool
-    public Connection getConnection() throws SQLException {
+    private static Connection getConnection() throws SQLException {
         return dataSource.getConnection();
     }
 
     //Inserisce un ingrediente e restituisce l'id generato
-    public int insertIngrediente(String nome) {
+    public static int insertIngrediente(String nome) {
         String query = "INSERT INTO ingrediente(nome) VALUES (?)";
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
@@ -91,7 +99,7 @@ public class Database {
     }
 
     //Inserisce la ricetta e restituisce l'id generato
-    public int insertRicetta(String nome, String tipo, String link, Float rating) {
+    public static int insertRicetta(String nome, String tipo, String link, Float rating) {
         String query = "INSERT INTO ricetta(nome, tipo, link, rating) VALUES (?, ?, ?, ?)";
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
@@ -113,7 +121,7 @@ public class Database {
     }
 
     //inserisce un'associazione tra ricetta e ingrediente
-    public void insertRicettaIngrediente(int idR, int idI) {
+    public static void insertRicettaIngrediente(int idR, int idI) {
         String query = "INSERT INTO ricetta_ingrediente VALUES (?, ?)";
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(query)) {
@@ -126,8 +134,35 @@ public class Database {
         }
     }
 
+    //inserisce l'utente dato l'id e l'ultimo accesso (last_active)
+    public static void insertUtente(long id, Timestamp last_active){
+        String query = "INSERT INTO utente VALUES (?, ?)";
+        try(Connection connection = getConnection()){
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            statement.setLong(1, id);
+            statement.setTimestamp(2, last_active);
+            statement.execute();
+        }catch (SQLException e){
+
+            System.out.println(e.getMessage());
+            System.out.println("Utente già presente, aggiornamento dell'ultimo accesso");
+
+            query = "UPDATE utente SET last_active = ? WHERE id = ?";
+            try(Connection connection = getConnection()){
+                PreparedStatement statement = connection.prepareStatement(query);
+                statement.setTimestamp(1, last_active);
+                statement.setLong(2, id);
+                statement.execute();
+            }
+            catch (SQLException e2) {
+                System.out.println(e2.getMessage());
+            }
+        }
+    }
+
     //recupera l'id di un ingrediente dato il suo nome
-    public int getIdIngrediente(String nome) {
+    public static int getIdIngrediente(String nome) {
         String query = "SELECT id FROM ingrediente WHERE nome = ?";
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(query)) {
@@ -142,6 +177,26 @@ public class Database {
             }
         } catch (SQLException e) {
             throw new Error(e);
+        }
+    }
+
+    public static ResultSet getRicette(String[] ingredienti){
+        StringBuffer query = new StringBuffer("select r.nome from ricetta r " +
+                "join ricetta_ingrediente ri on r.id = ri.idRicetta " +
+                "join ingrediente i on ri.idIngrediente = i.id " +
+                "where i.nome in (");
+        for(String i : ingredienti)
+            query.append("'" + i.replaceAll("'", "''").trim() + "',");
+        query.setCharAt(query.lastIndexOf(","), ')');
+        query.append(" group by r.id, r.nome having count(distinct i.nome) >= " + ingredienti.length);
+
+        try(Connection connection = getConnection()){
+            Statement statement = connection.createStatement();
+            ResultSet rs = statement.executeQuery(query.toString());
+            return rs;
+        }catch (SQLException e){
+            System.out.println(e.getMessage());
+            return null;
         }
     }
 }
