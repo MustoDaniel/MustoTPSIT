@@ -1,9 +1,7 @@
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.glassfish.grizzly.http.util.TimeStamp;
 
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,6 +33,7 @@ public class Database {
             // Creazione del pool di connessioni
             dataSource = new HikariDataSource(config);
 
+            //Creazione delle tabelle del database
             try (Connection connection = getConnection()) {
                 Statement statement = connection.createStatement();
 
@@ -72,6 +71,24 @@ public class Database {
                         "last_active datetime"+
                         ")";
                 statement.execute(createTable);
+
+                // Creazione tabella filtro
+                createTable = "create table if not exists filtro(" +
+                        "id int primary key not null auto_increment," +
+                        "nome varchar(16) unique not null" +
+                        ")";
+                statement.execute(createTable);
+                insertFiltri();
+
+                // Creazione tabella ricetta_filtro
+                createTable = "create table if not exists ricetta_filtro(" +
+                        "idRicetta int not null," +
+                        "idFiltro int not null," +
+                        "primary key(idRicetta, idFiltro)," +
+                        "foreign key (idRicetta) references ricetta(id) on delete cascade on update cascade," +
+                        "foreign key (idFiltro) references filtro(id) on delete cascade on update cascade" +
+                        ")";
+                statement.execute(createTable);
             }
         } catch (SQLException e) {
             //System.out.println("\n" + e.getMessage());
@@ -82,6 +99,10 @@ public class Database {
     private static synchronized Connection getConnection() throws SQLException {
         return dataSource.getConnection();
     }
+
+    //
+    // FUNZIONI PER L'INSERIMENTO DELLE ENTRY NEL DATABASE
+    //
 
     //Inserisce un ingrediente e restituisce l'id generato
     public static int insertIngrediente(String nome) {
@@ -166,6 +187,72 @@ public class Database {
         }
     }
 
+    //inserimento dei filtri (i filtri sono già noti, non è necessario inserirli tramite webScraper)
+    private void insertFiltri(){
+        String query = "INSERT INTO filtro (nome) VALUES (?)";
+        try(Connection connection = getConnection()){
+
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            //Filtri difficoltà di preparazione della ricetta --> id da 1 a 5 (molto facile -- molto difficile)
+            statement.setString(1, "molto facile");
+            statement.execute();
+            statement.setString(1, "facile");
+            statement.execute();
+            statement.setString(1, "media");
+            statement.execute();
+            statement.setString(1, "difficile");
+            statement.execute();
+            statement.setString(1, "molto difficile");
+            statement.execute();
+
+            //Filtri per tempo di preparazione massimo (minuti) --> id da 6 a 8
+            statement.setString(1, "15");
+            statement.execute();
+            statement.setString(1, "30");
+            statement.execute();
+            statement.setString(1, "60");
+            statement.execute();
+
+            //Filtri per regime alimentare --> id da 9 a 12
+            statement.setString(1, "light");
+            statement.execute();
+            statement.setString(1, "senza glutine");
+            statement.execute();
+            statement.setString(1, "senza lattosio");
+            statement.execute();
+            statement.setString(1, "vegetariano");
+            statement.execute();
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    //inserisce un'associazione tra ricetta e filtro
+    public static void insertRicettaFiltro(int idR, String nomeF){
+        String query = "INSERT INTO ricetta_filtro VALUES (?, ?)";
+        int idFiltro = getIdFiltro(nomeF);
+
+        if(idFiltro == -1)
+            return;
+
+        try(Connection connection = getConnection()){
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            statement.setInt(1, idR);
+            statement.setInt(2, idFiltro);
+            statement.execute();
+
+        }catch (SQLException e){
+            //System.out.println(e.getMessage());
+        }
+    }
+
+    //
+    // FUNZIONI PER L'ESECUZIONE DELLE QUERY
+    //
+
     //recupera l'id di un ingrediente dato il suo nome
     public static int getIdIngrediente(String nome) {
         String query = "SELECT id FROM ingrediente WHERE nome = ?";
@@ -183,6 +270,25 @@ public class Database {
         } catch (SQLException e) {
             throw new Error(e);
         }
+    }
+
+    private static int getIdFiltro(String nome) {
+        String query = "SELECT id FROM filtro WHERE nome = ?";
+        try(Connection connection = getConnection()){
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            statement.setString(1, nome.replace("'", "''"));
+            ResultSet rs = statement.executeQuery();
+
+            if(rs.next()) {
+                return rs.getInt("id");
+            }else {
+                System.out.println("Filtro non trovato");
+            }
+        }catch (SQLException e){
+            System.out.println(e.getMessage());
+        }
+        return -1;
     }
 
     public static Map<String, String> getRicette(String[] ingredienti){

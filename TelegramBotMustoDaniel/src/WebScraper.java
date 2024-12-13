@@ -4,6 +4,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -69,6 +70,8 @@ public class WebScraper {
             Connection con = Jsoup.connect(url);
             Document doc = con.get();
 
+            //INFO RICETTA
+
             String nome = doc.select("h1[class=gz-title-recipe gz-mBottom2x]").text().trim();   //Nome della ricetta
 
             String tipo = doc.selectFirst("div.gz-breadcrumb")  //Tipo della ricetta es: Dolci / Primi piatti / Contorni ecc..
@@ -79,6 +82,8 @@ public class WebScraper {
                     .replace(',', '.').trim());
 
             int idRicetta = db.insertRicetta(nome, tipo, url, linkImmagine, rating);  //inserimento della ricetta nel database; viene restituito l'id che è stato assegnato automaticamente alla ricetta da parte del database (auto_increment)
+
+            //INFO INGREDIENTI
 
             for(Element element : doc.select("dd.gz-ingredient")) { //iterazione sugli ingredienti della ricetta
                 String ingrediente = element.select("a").text();
@@ -92,9 +97,31 @@ public class WebScraper {
                 // quindi non eseguirò mai le stesse operazioni più volte con la stessa ricetta
             }
 
+            //INFO FILTRI
+
+            //filtri regime alimentare
+            for(Element element : doc.select("div.gz-list-featured-data-other").select("span[class=gz-name-featured-data-other]"))
+                Database.insertRicettaFiltro(idRicetta, element.text().trim().toLowerCase());
+
+            //filtro difficoltà
+            String difficoltà = doc.selectFirst("div.gz-list-featured-data").selectFirst("span[class=gz-name-featured-data]").select("strong").text().trim().toLowerCase();
+            Database.insertRicettaFiltro(idRicetta, difficoltà);
+
+            //filtro tempo di preparazione
+            Integer tempoPreparazione = Integer.parseInt(doc.selectFirst("span.gz-icon-preparazione + span.gz-name-featured-data strong").text().replace("min", "").trim());
+            Integer tempoCottura = Integer.parseInt(doc.selectFirst("span.gz-name-featured-data:contains(Cottura) strong").text().replace("min", "").trim());
+            Integer tempoTotale = tempoPreparazione + tempoCottura;
+
+            if(tempoTotale <= 15)
+                Database.insertRicettaFiltro(idRicetta, "15");
+            else if(tempoTotale > 15 && tempoTotale <= 30)
+                Database.insertRicettaFiltro(idRicetta, "30");
+            else if(tempoTotale > 30 && tempoTotale <= 60)
+                Database.insertRicettaFiltro(idRicetta, "60");
+
         }
         catch (Exception e){
-            System.out.println(e.getMessage());
+            //System.out.println(e.getMessage());
         }
     }
 }
