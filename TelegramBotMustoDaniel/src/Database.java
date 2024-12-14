@@ -299,7 +299,7 @@ public class Database {
         for(String i : ingredienti)
             query.append("'" + i.replaceAll("'", "''").trim() + "',");
         query.setCharAt(query.lastIndexOf(","), ')');
-        query.append(" group by r.id, r.nome having count(distinct i.nome) >= " + ingredienti.length);
+        query.append(" group by r.id, r.nome having count(distinct i.nome) >= " + ingredienti.length + " order by r.nome");
 
         try(Connection connection = getConnection()){
             Statement statement = connection.createStatement();

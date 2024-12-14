@@ -93,6 +93,9 @@ public class BotTelegram extends TelegramLongPollingBot {
                 SendMessage message = new SendMessage();
 
                 for(Map.Entry<String, String> entry : ricetteTrovate.entrySet()) {
+
+                    Thread.sleep(250);
+
                     photo.setChatId(String.valueOf(chatId));
                     photo.setPhoto(new InputFile(entry.getValue()));
 
@@ -103,8 +106,8 @@ public class BotTelegram extends TelegramLongPollingBot {
                     execute(photo);
                 }
             }
-        } catch (TelegramApiException e) {
-            System.out.println(e.getMessage());
+        } catch (TelegramApiException | InterruptedException e) {
+            System.out.println("\n" + e.getMessage());
         }
     }
 
