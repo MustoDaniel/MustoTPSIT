@@ -4,10 +4,14 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import javax.validation.constraints.Null;
 import javax.xml.crypto.Data;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class WebScraper {
     private ThreadPoolExecutor threadPool;
@@ -97,6 +101,9 @@ public class WebScraper {
                 // quindi non eseguirò mai le stesse operazioni più volte con la stessa ricetta
             }
 
+            if(nome.equalsIgnoreCase("torta frangipane"))
+                System.out.println("Torta frangipane");
+
             //INFO FILTRI
 
             //filtri regime alimentare
@@ -104,24 +111,79 @@ public class WebScraper {
                 Database.insertRicettaFiltro(idRicetta, element.text().trim().toLowerCase());
 
             //filtro difficoltà
-            String difficoltà = doc.selectFirst("div.gz-list-featured-data").selectFirst("span[class=gz-name-featured-data]").select("strong").text().trim().toLowerCase();
-            Database.insertRicettaFiltro(idRicetta, difficoltà);
+            String difficoltà;
+
+            try{ difficoltà = doc.selectFirst("div.gz-name-featured-data:contains(Difficoltà) strong").text().trim().toLowerCase(); }
+            catch (NullPointerException e) { difficoltà = "" ; }
+
+            if(!difficoltà.isEmpty())
+                Database.insertRicettaFiltro(idRicetta, difficoltà);
 
             //filtro tempo di preparazione
-            Integer tempoPreparazione = Integer.parseInt(doc.selectFirst("span.gz-icon-preparazione + span.gz-name-featured-data strong").text().replace("min", "").trim());
-            Integer tempoCottura = Integer.parseInt(doc.selectFirst("span.gz-name-featured-data:contains(Cottura) strong").text().replace("min", "").trim());
-            Integer tempoTotale = tempoPreparazione + tempoCottura;
+                String tempoPreparazioneText, tempoCotturaText;
 
-            if(tempoTotale <= 15)
+                try{ tempoPreparazioneText = doc.selectFirst("span.gz-name-featured-data:contains(Preparazione) strong").text().trim(); }
+                catch (NullPointerException e) { tempoPreparazioneText = ""; }
+
+                try{ tempoCotturaText = doc.selectFirst("span.gz-name-featured-data:contains(Cottura) strong").text().trim(); }
+                catch (NullPointerException e) { tempoCotturaText = ""; }
+
+                // Calcolare il tempo totale di preparazione e cottura in minuti
+                int tempoPreparazione = calcolaMinutiTotali(tempoPreparazioneText);
+                int tempoCottura = calcolaMinutiTotali(tempoCotturaText);
+
+                int tempoTotale = tempoPreparazione + tempoCottura;
+
+            if(tempoTotale > 0 && tempoTotale <= 15)
                 Database.insertRicettaFiltro(idRicetta, "15");
-            else if(tempoTotale > 15 && tempoTotale <= 30)
+            else if(tempoTotale <= 30)
                 Database.insertRicettaFiltro(idRicetta, "30");
-            else if(tempoTotale > 30 && tempoTotale <= 60)
+            else if(tempoTotale <= 60)
                 Database.insertRicettaFiltro(idRicetta, "60");
+
+            if(idRicetta == -1)
+                return;
+
+            //INFO PREPARAZIONE
+            int index = 0;
+            ArrayList<String> immagini = new ArrayList<>();
+            String img1, img2, img3;
+            for(Element step : doc.select("div.gz-content-recipe-step")){
+                for(Element image : step.select("picture"))
+                    immagini.add("https://ricette.giallozafferano.it" + image.select("img[src]").getFirst().attr("src").trim());
+
+                try { img1 = immagini.get(index); } catch (Exception e) { img1 = ""; }
+                try { img2 = immagini.get(index+1); } catch (Exception e) { img2 = ""; }
+                try { img3 = immagini.get(index+2); } catch (Exception e) { img3 = ""; }
+
+                String passaggio = step.select("p").getFirst().text().replaceAll("'", " ");
+
+                Database.insertPreparazione(passaggio, img1, img2, img3, idRicetta);
+                index += 3;
+            }
+
+
+
 
         }
         catch (Exception e){
             //System.out.println(e.getMessage());
         }
+    }
+
+    // Funzione per calcolare i minuti totali da un testo che potrebbe essere "X h Y min", "X h", o "Y min"
+    int calcolaMinutiTotali(String tempoText) {
+        Pattern pattern = Pattern.compile("(\\d+)\\s*h(?:\\s*(\\d+)\\s*min)?|^(\\d+)\\s*min$"); //regex per il testo che potrebbe essere "X h Y min", "X h", o "Y min"
+        Matcher matcher = pattern.matcher(tempoText);
+        if (matcher.find()) {
+            if (matcher.group(1) != null) {  // Caso "X h Y min" o "X h"
+                int ore = Integer.parseInt(matcher.group(1));
+                int minuti = (matcher.group(2) != null) ? Integer.parseInt(matcher.group(2)) : 0;
+                return (ore * 60) + minuti;  // Converte le ore in minuti e somma i minuti
+            } else if (matcher.group(3) != null) {  // Caso "Y min"
+                return Integer.parseInt(matcher.group(3));
+            }
+        }
+        return 0;  // Se non corrisponde a nessun formato, ritorna 0 minuti
     }
 }

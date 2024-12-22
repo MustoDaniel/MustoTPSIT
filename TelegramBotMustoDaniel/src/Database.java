@@ -89,9 +89,22 @@ public class Database {
                         "foreign key (idFiltro) references filtro(id) on delete cascade on update cascade" +
                         ")";
                 statement.execute(createTable);
+
+                // Creazione tabella preparazione
+                createTable = "create table if not exists preparazione(" +
+                        "id int primary key not null auto_increment," +
+                        "preparazione LONGTEXT," +
+                        "linkImmagine1 varchar(256)," +
+                        "linkImmagine2 varchar(256)," +
+                        "linkImmagine3 varchar(256)," +
+                        "idRicetta int not null," +
+                        "foreign key(idRicetta) references ricetta(id) on delete cascade on update cascade" +
+                        ")";
+                statement.execute(createTable);
+
             }
         } catch (SQLException e) {
-            //System.out.println("\n" + e.getMessage());
+            System.out.println("\n" + e.getMessage());
         }
     }
 
@@ -232,7 +245,7 @@ public class Database {
     //inserisce un'associazione tra ricetta e filtro
     public static void insertRicettaFiltro(int idR, String nomeF){
         String query = "INSERT INTO ricetta_filtro VALUES (?, ?)";
-        int idFiltro = getIdFiltro(nomeF);
+        int idFiltro = getIdFiltro(nomeF, idR);
 
         if(idFiltro == -1)
             return;
@@ -246,6 +259,24 @@ public class Database {
 
         }catch (SQLException e){
             //System.out.println(e.getMessage());
+        }
+    }
+
+    //inserisce un passaggio della preparazione di una ricetta
+    public static void insertPreparazione(String preparazione, String img1, String img2, String img3, int idRicetta){
+        String query = "INSERT INTO preparazione (preparazione, linkImmagine1, linkImmagine2, linkImmagine3, idRicetta) VALUES (?, ?, ?, ?, ?)";
+        try(Connection connection = getConnection()){
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            statement.setString(1, preparazione.replace("'", "''").trim());
+            statement.setString(2, img1);
+            statement.setString(3, img2);
+            statement.setString(4, img3);
+            statement.setInt(5, idRicetta);
+            statement.execute();
+
+        }catch (SQLException e){
+            System.out.println(e.getMessage());
         }
     }
 
@@ -272,7 +303,7 @@ public class Database {
         }
     }
 
-    private static int getIdFiltro(String nome) {
+    private static int getIdFiltro(String nome, int ricetta) {
         String query = "SELECT id FROM filtro WHERE nome = ?";
         try(Connection connection = getConnection()){
             PreparedStatement statement = connection.prepareStatement(query);
