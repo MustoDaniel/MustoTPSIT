@@ -17,7 +17,6 @@ public class WebScraper {
     private ThreadPoolExecutor threadPool;
 
     private static final String url1 = "https://www.giallozafferano.it/ricette-cat/page1";
-    //private static final String url2 = "https://www.fattoincasadabenedetta.it/ricetta";
 
     Database db = new Database();
 
@@ -98,7 +97,7 @@ public class WebScraper {
                     db.insertRicettaIngrediente(idRicetta, idIngrediente);  //stessa cosa della riga sopra, ma l'id ce lo abbiamo già dall'operazione di inserimento dell'ingrediente
 
                 //NOTA: non serve controllare l'id della ricetta perchè (in teoria) ogni thread controlla una ricetta diversa,
-                // quindi non eseguirò mai le stesse operazioni più volte con la stessa ricetta
+                // quindi non eseguirò mai le stesse operazioni più volte con la stessa ricetta  --> tranne nei casi in cui ci sono due pagine diverse che hanno la stessa ricetta
             }
 
             if(nome.equalsIgnoreCase("torta frangipane"))
@@ -144,6 +143,9 @@ public class WebScraper {
             if(idRicetta == -1)
                 return;
 
+            if(nome.equalsIgnoreCase("cannelloni"))
+                System.out.println(nome);
+
             //INFO PREPARAZIONE
             int index = 0;
             ArrayList<String> immagini = new ArrayList<>();
@@ -156,15 +158,15 @@ public class WebScraper {
                 try { img2 = immagini.get(index+1); } catch (Exception e) { img2 = ""; }
                 try { img3 = immagini.get(index+2); } catch (Exception e) { img3 = ""; }
 
+                index += 3;
+
+                while(immagini.size() < index)
+                    immagini.add("");
+
                 String passaggio = step.select("p").getFirst().text().replaceAll("'", " ");
 
                 Database.insertPreparazione(passaggio, img1, img2, img3, idRicetta);
-                index += 3;
             }
-
-
-
-
         }
         catch (Exception e){
             //System.out.println(e.getMessage());
